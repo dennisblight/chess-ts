@@ -1,4 +1,5 @@
 import { Board } from "./board";
+import { Direction } from "./enums";
 import { Piece } from "./pieces";
 import { Vector } from "./vector";
 
@@ -39,13 +40,17 @@ export class Square {
   }
 
   public displace(vector: Vector): Square | undefined;
+  public displace(direction: Direction): Square | undefined;
   public displace(row: number, column: number): Square | undefined;
   public displace(arg1: any, arg2?: any): Square | undefined {
     if (typeof arg1 === 'number' && typeof arg2 === 'number')
       arg1 = new Vector(arg2, arg1);
 
+    else if(Object.values(Direction).includes(arg1))
+      arg1 = Vector.direction(arg1);
+
     if (arg1 instanceof Vector)
-      return this.board?.findSquare(this.row + arg1.y, this.column + arg1.y);
+      return this.board?.findSquare(this.row + arg1.y, this.column + arg1.x);
   }
 
   /**
@@ -63,6 +68,19 @@ export class Square {
         return square;
       }
     });
+  }
+
+  public scanDirection(direction: Direction, until?: (s: Square) => boolean) {
+    let vector = Vector.direction(direction);
+    let squares: Square[] = [];
+    for(let m = 1; m < 8; m++) {
+      let square = this.displace(vector.mutiply(m));
+      if(square) squares.push(square);
+      else break;
+      if(until && until(square))
+        break;
+    }
+    return squares;
   }
 
   public bind(piece: Piece): void {

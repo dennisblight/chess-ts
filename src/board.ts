@@ -29,6 +29,8 @@ export class Board {
 
   public readonly inactivePieces: Piece[];
 
+  public readonly pinnedPieces: Piece[];
+
   get enPassant() {
     return this._enPassant;
   }
@@ -63,6 +65,11 @@ export class Board {
     if(enPassant !== '-') {
       this._enPassant = this.findSquare(enPassant);
     }
+
+    this.pinnedPieces = [
+      ...this.findBlackKing().setPinnedPieces(),
+      ...this.findWhiteKing().setPinnedPieces(),
+    ];
   }
 
   private createSquares(): Square[] {
@@ -101,9 +108,7 @@ export class Board {
     else if(side == Side.White && this.whiteKing)
       return this.whiteKing;
 
-    let piece: King = this.activePieces.find(
-      p => p instanceof King && p.side == side
-    )!;
+    let piece: King = this.activePieces.find((p): p is King => p instanceof King && p.side == side)!;
 
     if(side == Side.Black)
       this.blackKing = piece;
@@ -153,14 +158,14 @@ export class Board {
   public findSquare(arg1: any, column?: any): Square | undefined {
 
     if (typeof arg1 === 'string') {
-      arg1 = (s: Square) => s.key == arg1;
+      return this.squares.find(s => s.key == arg1);
     }
 
     else if (typeof arg1 === "number" && typeof column === 'number') {
-      arg1 = (s: Square) => s.row == arg1 && s.column == column;
+      return this.squares.find(s => s.row == arg1 && s.column == column);
     }
 
-    if (typeof arg1 === 'function') {
+    else if (typeof arg1 === 'function') {
       return this.squares.find(arg1);
     }
   }
@@ -184,5 +189,32 @@ export class Board {
       this.halfMove,
       this.fullMove,
     ].join(' ');
+  }
+
+  public renderString() {
+      let boardString = "╔═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╗\n"
+        + "║ a8 │ b8 │ c8 │ d8 │ e8 │ f8 │ g8 │ h8 ║ 8\n"
+        + "╟───┼───┼───┼───┼───┼───┼───┼───╢\n"
+        + "║ a7 │ b7 │ c7 │ d7 │ e7 │ f7 │ g7 │ h7 ║ 7\n"
+        + "╟───┼───┼───┼───┼───┼───┼───┼───╢\n"
+        + "║ a6 │ b6 │ c6 │ d6 │ e6 │ f6 │ g6 │ h6 ║ 6\n"
+        + "╟───┼───┼───┼───┼───┼───┼───┼───╢\n"
+        + "║ a5 │ b5 │ c5 │ d5 │ e5 │ f5 │ g5 │ h5 ║ 5\n"
+        + "╟───┼───┼───┼───┼───┼───┼───┼───╢\n"
+        + "║ a4 │ b4 │ c4 │ d4 │ e4 │ f4 │ g4 │ h4 ║ 4\n"
+        + "╟───┼───┼───┼───┼───┼───┼───┼───╢\n"
+        + "║ a3 │ b3 │ c3 │ d3 │ e3 │ f3 │ g3 │ h3 ║ 3\n"
+        + "╟───┼───┼───┼───┼───┼───┼───┼───╢\n"
+        + "║ a2 │ b2 │ c2 │ d2 │ e2 │ f2 │ g2 │ h2 ║ 2\n"
+        + "╟───┼───┼───┼───┼───┼───┼───┼───╢\n"
+        + "║ a1 │ b1 │ c1 │ d1 │ e1 │ f1 │ g1 │ h1 ║ 1\n"
+        + "╚═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╝\n"
+        + "  A   B   C   D   E   F   G   H";
+
+      this.squares.forEach(c => {
+        boardString = boardString.replace(c.key, c.piece?.symbol ?? ' ');
+      });
+      
+      return boardString;
   }
 }

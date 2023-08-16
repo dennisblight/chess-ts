@@ -1,5 +1,5 @@
 import { Board } from "./board";
-import { Side } from "./enums";
+import { Direction, Side } from "./enums";
 import { Square } from "./square";
 import { Vector } from "./vector";
 
@@ -7,11 +7,33 @@ class Pin {
 
   public readonly piece: Piece;
 
-  public readonly direction: Vector;
+  public readonly vector: Vector;
 
-  constructor(piece: Piece, direction: Vector) {
+  public readonly direction: Direction;
+
+  constructor(piece: Piece, direction: Direction) {
     this.piece = piece;
     this.direction = direction;
+    this.vector = Vector.direction(direction);
+  }
+
+  public isParallelWith(direction: Direction): boolean {
+
+    if(direction == this.direction)
+      return true;
+    
+    switch(this.direction) {
+      case Direction.Bottom: return direction == Direction.Top;
+      case Direction.Top: return direction == Direction.Bottom;
+      case Direction.Left: return direction == Direction.Right;
+      case Direction.Right: return direction == Direction.Left;
+      case Direction.BottomLeft: return direction == Direction.TopRight;
+      case Direction.BottomRight: return direction == Direction.TopLeft;
+      case Direction.TopLeft: return direction == Direction.BottomRight;
+      case Direction.TopRight: return direction == Direction.BottomLeft;
+    }
+
+    return false;
   }
 }
 
@@ -70,6 +92,34 @@ export abstract class Piece {
     }
   }
 
+  public isLineWith(piece: Piece): boolean {
+    return this.isDiagonalWith(piece) || this.isStraightWith(piece);
+  }
+
+  public isDiagonalWith(piece: Piece): boolean {
+    if(!this.square || !piece.square)
+      return false;
+
+    return Math.abs(this.square.row - piece.square.row)
+      == Math.abs(this.square.column - piece.square.column);
+  }
+
+  public isStraightWith(piece: Piece): boolean {
+    if(!this.square || !piece.square)
+      return false;
+
+    return (this.square.row - piece.square.row) == 0
+      || (this.square.column - piece.square.column) == 0;
+  }
+
+  public distance(piece: Piece): Vector | undefined {
+    if(this.square && piece.square) {
+      let x = this.square.column - piece.square.column;
+      let y = this.square.row - piece.square.row;
+      return new Vector(x, y);
+    }
+  }
+
   public toString(): string {
     return this.symbol;
   }
@@ -105,7 +155,7 @@ export class Pawn extends Piece {
     let moves: Square[] = [];
     let step = side == Side.Black ? 1 : -1;
 
-    if(!this.pin || this.pin.direction.x == 0) {
+    if(!this.pin || this.pin.vector.x == 0) {
       let firstStep = square.displace(step, 0);
       if(firstStep && !firstStep.piece) {
         moves.push(firstStep);
@@ -171,27 +221,17 @@ export class Bishop extends Piece {
       return [];
 
     let directions = [
-      new Vector(1, 1),
-      new Vector(-1, 1),
-      new Vector(1, -1),
-      new Vector(-1, -1),
+      Direction.TopLeft,
+      Direction.TopRight,
+      Direction.BottomLeft,
+      Direction.BottomRight,
     ]
-    .filter(d => !this.pin || d.isParallelWith(this.pin.direction));
+    
+    .filter(d => !this.pin || this.pin.isParallelWith(d));
 
-    let moves: Square[] = [];
-    for(let i = 1; i < 8; i++) {
-      let steps = this.square.displaces(directions, i);
-      if(steps.length == 0)
-        break;
-      for(let [index, step] of steps.entries()) {
-        if(step && (!step.piece || step.piece.side == this.oppositeSide))
-          moves.push(step);
-        if(!step || step.piece)
-          delete directions[index];
-      }
-    }
-
-    return moves;
+    return directions
+      .flatMap(d => this.square!.scanDirection(d, s => !!s.piece))
+      .filter(d => !d.piece || d.piece.side == this.oppositeSide);
   }
 }
 
@@ -202,27 +242,17 @@ export class Rook extends Piece {
       return [];
 
     let directions = [
-      new Vector(1, 0),
-      new Vector(-1, 0),
-      new Vector(0, 1),
-      new Vector(0, -1),
+      Direction.Top,
+      Direction.Bottom,
+      Direction.Left,
+      Direction.Right,
     ]
-    .filter(d => !this.pin || d.isParallelWith(this.pin.direction));
 
-    let moves: Square[] = [];
-    for(let i = 1; i < 8; i++) {
-      let steps = this.square.displaces(directions, i);
-      if(steps.length == 0)
-        break;
-      for(let [index, step] of steps.entries()) {
-        if(step && (!step.piece || step.piece.side == this.oppositeSide))
-          moves.push(step);
-        if(!step || step.piece)
-          delete directions[index];
-      }
-    }
+    .filter(d => !this.pin || this.pin.isParallelWith(d));
 
-    return moves;
+    return directions
+      .flatMap(d => this.square!.scanDirection(d, s => !!s.piece))
+      .filter(d => !d.piece || d.piece.side === this.oppositeSide);
   }
 }
 
@@ -233,31 +263,21 @@ export class Queen extends Piece {
       return [];
 
     let directions = [
-      new Vector(1, 0),
-      new Vector(-1, 0),
-      new Vector(0, 1),
-      new Vector(0, -1),
-      new Vector(1, 1),
-      new Vector(-1, 1),
-      new Vector(1, -1),
-      new Vector(-1, -1),
+      Direction.Top,
+      Direction.Bottom,
+      Direction.Left,
+      Direction.Right,
+      Direction.TopLeft,
+      Direction.TopRight,
+      Direction.BottomLeft,
+      Direction.BottomRight,
     ]
-    .filter(d => !this.pin || d.isParallelWith(this.pin.direction));
 
-    let moves: Square[] = [];
-    for(let i = 1; i < 8; i++) {
-      let steps = this.square.displaces(directions, i);
-      if(steps.length == 0)
-        break;
-      for(let [index, step] of steps.entries()) {
-        if(step && (!step.piece || step.piece.side == this.oppositeSide))
-          moves.push(step);
-        if(!step || step.piece)
-          delete directions[index];
-      }
-    }
+    .filter(d => !this.pin || this.pin.isParallelWith(d));
 
-    return moves;
+    return directions
+      .flatMap(d => this.square!.scanDirection(d, s => s.piece instanceof Piece))
+      .filter(d => !d.piece || d.piece.side === this.oppositeSide);
   }
 }
 
@@ -268,21 +288,18 @@ export class King extends Piece {
       return [];
 
     let directions = [
-      new Vector(1, 0),
-      new Vector(-1, 0),
-      new Vector(0, 1),
-      new Vector(0, -1),
-      new Vector(1, 1),
-      new Vector(-1, 1),
-      new Vector(1, -1),
-      new Vector(-1, -1),
+      Direction.Top,
+      Direction.Bottom,
+      Direction.Left,
+      Direction.Right,
+      Direction.TopLeft,
+      Direction.TopRight,
+      Direction.BottomLeft,
+      Direction.BottomRight,
     ];
 
-    let moves: Square[] = [];
-    this.square.displaces(directions).forEach(step => {
-      if(step && (!step.piece || step.piece.side == this.oppositeSide))
-        moves.push(step);
-    });
+    let moves = directions.map(d => this.square!.displace(d))
+      .filter((v): v is Square => v instanceof Square && (!v.piece || v.piece.side == this.oppositeSide));
     
     if(this.board.castling.canKingSide(this.side)) {
       let homeRank = this.side == Side.Black ? 0 : 7;
@@ -319,7 +336,49 @@ export class King extends Piece {
         }
       }
     }
-    
+
     return moves;
+  }
+
+  public setPinnedPieces() {
+
+    let directions = [
+      Direction.Top,
+      Direction.Bottom,
+      Direction.Left,
+      Direction.Right,
+      Direction.TopLeft,
+      Direction.TopRight,
+      Direction.BottomLeft,
+      Direction.BottomRight,
+    ];
+
+    let pieces: Piece[] = [];
+
+    directions.forEach(dir => {
+      let pinned: Piece | null = null;
+      this.square!.scanDirection(dir, s => {
+        if(s.piece) {
+          if(s.piece.side == this.side && !pinned) {
+            pinned = s.piece;
+          }
+          else if (s.piece.side == this.oppositeSide && pinned) {
+            let validPinner = s.piece instanceof Queen
+              || (s.piece instanceof Rook && !(dir & Direction.Diagonal))
+              || (s.piece instanceof Bishop && (dir & Direction.Diagonal));
+
+            if(validPinner) {
+              pinned.pin = new Pin(s.piece, dir);
+              pieces.push(pinned);
+            }
+            else return true;
+          }
+          else return true;
+        }
+        return false;
+      });
+    });
+
+    return pieces;
   }
 }
