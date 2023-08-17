@@ -28,10 +28,13 @@ export class Move {
     this.notation = notation;
     this.turn = board.turn;
 
+    // console.debug(`Initial: ${notation}`);
     if('+#'.includes(notation[notation.length - 1])) {
       this.checkState = <CheckState> notation[notation.length - 1];
       notation = notation.substring(0, notation.length - 1);
+      // console.debug(`After check: ${notation}`);
     }
+
 
     if(notation == CastlingSide.King || notation == CastlingSide.Queen) {
       let castling = new CastlingMove(board, notation);
@@ -46,11 +49,13 @@ export class Move {
     if(notation[notation.length - 2] == '=') {
       promotesTo = notation[notation.length - 1];
       notation = notation.substring(0, notation.length - 2);
+      // console.debug(`After promotes: ${notation}`);
     }
 
     let toKey = notation.substring(notation.length - 2);
     let to = board.findSquare(toKey);
     notation = notation.substring(0, notation.length - 2);
+    // console.debug(`After extract from: ${notation}`);
 
     if(typeof to === 'undefined')
       throw new Error(`Could not find square ${toKey}`);
@@ -60,6 +65,7 @@ export class Move {
       this.capturedPiece = to.piece;
       isCapturing = true;
       notation = notation.substring(0, notation.length - 1);
+      // console.debug(`After capturing: ${notation}`);
     }
 
     let sourcePiece = Pawn;
@@ -73,6 +79,7 @@ export class Move {
       }
 
       notation = notation.substring(1);
+      // console.debug(`After extract source: ${notation}`);
     }
     
     let from: Square | undefined;
@@ -82,13 +89,24 @@ export class Move {
     else if(notation.length <= 1) {
       let rank = '1' <= notation && notation <= '8' ? notation : null;
       let file = 'a' <= notation && notation <= 'h' ? notation : null;
-      let froms = board.squares.filter(
-        c => c.piece instanceof sourcePiece
-          && c.piece.side == this.turn
-          && (file === null || c.file == file)
-          && (rank === null || c.rank == rank)
-          && c.piece.availableMoves.includes(this.to)
-      );
+
+      // console.debug(`Find piece ${typeof sourcePiece} to: ${toKey}`);
+      // console.debug(`Squares: ${board.squares.length}`);
+
+      let froms = board.squares.filter(c => c.piece instanceof sourcePiece);
+      // console.debug(`Squares (after filter type): ${froms.length}`);
+
+      froms = froms.filter(c => c.piece?.side == this.turn);
+      // console.debug(`Squares (after filter by side): ${froms.length}`);
+      
+      froms = froms.filter(c => (file === null || c.file == file));
+      // console.debug(`Squares (after filter by file < ${file ?? '-'} >): ${froms.length}`);
+      
+      froms = froms.filter(c => (rank === null || c.rank == rank));
+      // console.debug(`Squares (after filter by rank < ${rank ?? '-'} >): ${froms.length}`);
+      
+      froms = froms.filter(c => c.piece?.availableMoves.includes(to!));
+      // console.debug(`Squares (after filter by availableMoves): ${froms.length}`);
 
       if(froms.length > 1)
         throw new Error("This notation found > 1 moves");
@@ -103,6 +121,7 @@ export class Move {
     if(typeof from.piece === 'undefined')
       throw new Error(`Could not find piece from square ${from}`);
     
+    // console.debug(`Final: ${notation}`);
     this.to = to;
     this.from = from;
     this.piece = from.piece;

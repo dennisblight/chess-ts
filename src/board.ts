@@ -21,8 +21,12 @@ export class Board {
   private isChanged = false;
 
   private blackKing?: King;
+  private blackKingRook?: Rook;
+  private blackQueenRook?: Rook;
 
   private whiteKing?: King;
+  private whiteKingRook?: Rook;
+  private whiteQueenRook?: Rook;
 
   public readonly squares: Square[];
 
@@ -71,6 +75,11 @@ export class Board {
     if(enPassant !== '-') {
       this._enPassant = this.findSquare(enPassant);
     }
+
+    this.blackKingRook = this.findKingRook(Side.Black);
+    this.whiteKingRook = this.findKingRook(Side.White);
+    this.blackQueenRook = this.findQueenRook(Side.Black);
+    this.whiteQueenRook = this.findQueenRook(Side.White);
 
     this.updatePin();
   }
@@ -131,28 +140,49 @@ export class Board {
   }
 
   public findQueenRook(side: Side): Rook | undefined {
-    let homeRank = side == Side.White ? '1' : '8';
+    if(side == Side.Black && this.blackQueenRook instanceof Rook)
+      return this.blackQueenRook;
+    else if(side == Side.White && this.whiteQueenRook instanceof Rook)
+      return this.whiteQueenRook;
+
     let king = this.findKing(side);
     let kingSquare = king.square!;
-    return this.findActivePiece(
+    let rook = this.findActivePiece(
       p => p instanceof Rook
         && p.side == side
-        && p.square?.rank == homeRank
-        && p.square?.column < kingSquare.column
+        && p.isInHomeRank
+        && p.square!.column < kingSquare.column
     );
+
+    if(side == Side.Black)
+      this.blackQueenRook = rook;
+    else if(side == Side.White)
+      this.whiteQueenRook = rook;
+
+    return rook;
   }
 
   public findKingRook(side: Side): Rook | undefined {
-    let homeRank = side == Side.White ? '1' : '8';
-    let king = this.findKing(side);
+    if(side == Side.Black && this.blackKingRook instanceof Rook)
+      return this.blackKingRook;
+    else if(side == Side.White && this.whiteKingRook instanceof Rook)
+      return this.whiteKingRook;
 
+    let king = this.findKing(side);
     let kingSquare = king.square!;
-    return this.findActivePiece(
+    let rook = this.findActivePiece(
       p => p instanceof Rook
         && p.side == side
-        && p.square?.rank == homeRank
-        && p.square?.column > kingSquare.column
+        && p.isInHomeRank
+        && p.square!.column > kingSquare.column
     );
+
+    if(side == Side.Black)
+      this.blackKingRook = rook;
+    else if(side == Side.White)
+      this.whiteKingRook = rook;
+
+    return rook;
   }
 
   public findActivePiece(predicate: (p: Piece) => boolean): Piece | undefined {
@@ -222,7 +252,7 @@ export class Board {
       this.fullMove++;
     }
 
-    if(move.capturedPiece !== null || move.piece instanceof Pawn) {
+    if(move.capturedPiece instanceof Piece || move.piece instanceof Pawn) {
       this.halfMove = 0;
     }
     else {
@@ -234,13 +264,12 @@ export class Board {
       this.castling.unset(this.turn, CastlingSide.King, CastlingSide.Queen);
     }
     else if(move.piece instanceof Rook) {
-      let king = this.findKing(this.turn);
-      let rook = move.piece;
-      let castlingSide = rook.square!.file > king.square!.file
-        ? CastlingSide.King
-        : CastlingSide.Queen;
-
-      this.castling.unset(this.turn, castlingSide);
+      if(move.piece === this.findKingRook(this.turn)) {
+        this.castling.unset(this.turn, CastlingSide.King);
+      }
+      else if(move.piece === this.findQueenRook(this.turn)) {
+        this.castling.unset(this.turn, CastlingSide.Queen);
+      }
     }
     else if(move.piece instanceof Pawn) {
       if(move.from.rank == '2' && move.to.rank == '4') {

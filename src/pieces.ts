@@ -42,13 +42,7 @@ export abstract class Piece {
 
   public pin?: Pin;
   
-  private _square?: Square;
-  public get square(): typeof this._square {
-    return this._square;
-  }
-  private set square(value: Square) {
-    this._square = value;
-  }
+  public square?: Square;
 
   public get oppositeSide() {
     return this.side === Side.Black ? Side.White : Side.Black;
@@ -76,16 +70,13 @@ export abstract class Piece {
   public bind(square: Square): void {
     if (square !== this.square) {
       this.unbind();
-      this.square = square;
-      this.square.bind(this);
+      square.bind(this);
     }
   }
 
   public unbind(): void {
     if (this.square) {
-      let square = this.square;
-      delete this.square;
-      square.unbind();
+      this.square.unbind();
     }
   }
 
@@ -134,8 +125,8 @@ export abstract class Piece {
     }
   }
 
-  public static isValidPiece(symbol: string) {
-    return 'prnbqk'.includes(symbol.toLowerCase());
+  public static isValidPiece(symbol?: string) {
+    return symbol && 'prnbqk'.includes(symbol.toLowerCase());
   }
 }
 
@@ -305,8 +296,8 @@ export class King extends Piece {
     let moves = directions.map(d => this.square!.displace(d))
       .filter((v): v is Square => v instanceof Square && (!v.piece || v.piece.side == this.oppositeSide));
     
-    if(this.board.castling.canKingSide(this.side)) {
-      let homeRank = this.side == Side.Black ? 0 : 7;
+    if(this.isInHomeRank && this.board.castling.canKingSide(this.side)) {
+      let homeRank = this.square.row;
       let rook = this.board.findKingRook(this.side);
       if(rook && rook.square) {
         let isAbleToCastling = true;
@@ -323,8 +314,8 @@ export class King extends Piece {
       }
     }
 
-    if(this.board.castling.canQueenSide(this.side)) {
-      let homeRank = this.side == Side.Black ? 0 : 7;
+    if(this.isInHomeRank && this.board.castling.canQueenSide(this.side)) {
+      let homeRank = this.square.row;
       let rook = this.board.findKingRook(this.side);
       if(rook && rook.square) {
         let isAbleToCastling = true;
@@ -360,7 +351,7 @@ export class King extends Piece {
     let pieces: Piece[] = [];
 
     directions.forEach(dir => {
-      let pinned: Piece | null = null;
+      let pinned: Piece | undefined;
       this.square!.scanDirection(dir, s => {
         if(s.piece) {
           if(s.piece.side == this.side && !pinned) {

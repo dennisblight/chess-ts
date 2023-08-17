@@ -13,13 +13,7 @@ export class Square {
 
   public readonly key: string;
 
-  private _piece?: Piece;
-  public get piece(): typeof this._piece {
-    return this._piece;
-  }
-  private set piece(value: NonNullable<Piece>) {
-    this._piece = value;
-  }
+  public piece?: Piece;
 
   public readonly board?: Board;
 
@@ -87,15 +81,14 @@ export class Square {
     if (this.piece !== piece) {
       this.unbind();
       this.piece = piece;
-      this.piece.bind(this);
+      piece.square = this;
     }
   }
 
   public unbind(): void {
     if (this.piece) {
-      let piece = this.piece;
+      delete this.piece.square;
       delete this.piece;
-      piece.unbind();
     }
   }
 

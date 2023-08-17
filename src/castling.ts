@@ -42,13 +42,17 @@ export class Castling {
   }
 
   public unset(turn: Side, ...side: CastlingSide[]):void {
-    if(turn == Side.Black) {
-      this.blackKing = !side.includes(CastlingSide.King);
-      this.blackQueen = !side.includes(CastlingSide.Queen);
+    if(turn == Side.Black && side.includes(CastlingSide.King)) {
+      this.blackKing = false;
     }
-    else if(turn == Side.White) {
-      this.whiteKing = !side.includes(CastlingSide.King);
-      this.whiteQueen = !side.includes(CastlingSide.Queen);
+    if(turn == Side.Black && side.includes(CastlingSide.Queen)) {
+      this.blackQueen = false;
+    }
+    if(turn == Side.White && side.includes(CastlingSide.King)) {
+      this.whiteKing = false;
+    }
+    if(turn == Side.White && side.includes(CastlingSide.Queen)) {
+      this.whiteQueen = false;
     }
   }
 
