@@ -127,7 +127,7 @@ export class Move {
     this.piece = from.piece;
 
     if(isCapturing) {
-      if(to.piece === null && from.piece instanceof Pawn) {
+      if(!to.piece && from.piece instanceof Pawn) {
         // En passant
         let square = to.file + (this.turn == Side.Black ? '4' : '5');
         this.capturedPiece = board.findSquare(square)!.piece;

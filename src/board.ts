@@ -274,9 +274,11 @@ export class Board {
     else if(move.piece instanceof Pawn) {
       if(move.from.rank == '2' && move.to.rank == '4') {
         this._enPassant = this.findSquare(move.from.file + '3');
+        // console.debug(`En passant at: ${this._enPassant}`);
       }
       else if(move.from.rank == '7' && move.to.rank == '5') {
         this._enPassant = this.findSquare(move.from.file + '6');
+        // console.debug(`En passant at: ${this._enPassant}`);
       }
     }
 

@@ -48,11 +48,7 @@ export abstract class Piece {
     return this.side === Side.Black ? Side.White : Side.Black;
   }
 
-  public get symbol(): string {
-    return this.side === Side.Black
-      ? this.constructor.name[0].toLowerCase()
-      : this.constructor.name[0].toUpperCase();
-  }
+  public abstract get symbol(): string;
 
   public get isInHomeRank(): boolean {
     return this.side == Side.Black
@@ -126,7 +122,7 @@ export abstract class Piece {
   }
 
   public static isValidPiece(symbol?: string) {
-    return symbol && 'prnbqk'.includes(symbol.toLowerCase());
+    return symbol && 'PRNBQK'.includes(symbol);
   }
 }
 
@@ -172,6 +168,10 @@ export class Pawn extends Piece {
     moves.push(...attacking);
 
     return moves;
+  }
+
+  public get symbol(): string {
+    return this.side === Side.Black ? 'p' : 'P';
   }
 }
 
@@ -228,6 +228,10 @@ export class Bishop extends Piece {
       .flatMap(d => square!.scanDirection(d, s => s.piece instanceof Piece))
       .filter(d => !d.piece || d.piece.side == oppositeSide);
   }
+  
+  public get symbol(): string {
+    return this.side === Side.Black ? 'b' : 'B';
+  }
 }
 
 export class Rook extends Piece {
@@ -248,6 +252,10 @@ export class Rook extends Piece {
     return directions
       .flatMap(d => this.square!.scanDirection(d, s => s.piece instanceof Piece))
       .filter(d => !d.piece || d.piece.side === this.oppositeSide);
+  }
+
+  public get symbol(): string {
+    return this.side === Side.Black ? 'r' : 'R';
   }
 }
 
@@ -273,6 +281,10 @@ export class Queen extends Piece {
     return directions
       .flatMap(d => this.square!.scanDirection(d, s => s.piece instanceof Piece))
       .filter(d => !d.piece || d.piece.side === this.oppositeSide);
+  }
+
+  public get symbol(): string {
+    return this.side === Side.Black ? 'q' : 'Q';
   }
 }
 
@@ -375,5 +387,9 @@ export class King extends Piece {
     });
 
     return pieces;
+  }
+
+  public get symbol(): string {
+    return this.side === Side.Black ? 'k' : 'K';
   }
 }
