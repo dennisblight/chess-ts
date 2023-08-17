@@ -2,7 +2,7 @@ import { Board } from "../src/board";
 const fs = require('fs');
 
 describe("Test moves", () => {
-  let files = ['/pgn/1.json', '/pgn/2.json', '/pgn/3.json'];
+  let files = ['/pgn/1.json', '/pgn/2.json', '/pgn/3.json', '/pgn/4.json'];
   for(let file of files) {
     test('Test from file ' + file, () => {
       let board = new Board();
