@@ -1,13 +1,14 @@
 import { Castling } from "./castling";
-import { Side } from "./enums";
-import { King, Piece, Rook } from "./pieces";
+import { CastlingSide, Side } from "./enums";
+import { Move } from "./move";
+import { King, Pawn, Piece, Rook } from "./pieces";
 import { Square } from "./square";
 
 export class Board {
 
   private placement: string;
 
-  private turn: Side;
+  private _turn: Side;
 
   private _castling: Castling;
 
@@ -25,11 +26,13 @@ export class Board {
 
   public readonly squares: Square[];
 
-  public readonly activePieces: Piece[];
+  public readonly activePieces: Set<Piece>;
 
-  public readonly inactivePieces: Piece[];
+  public readonly inactivePieces: Set<Piece> = new Set();
 
-  public readonly pinnedPieces: Piece[];
+  public readonly pinnedPieces: Set<Piece> = new Set();
+
+  public readonly moves: Move[] = [];
 
   get enPassant() {
     return this._enPassant;
@@ -39,12 +42,16 @@ export class Board {
     return this._castling;
   }
 
+  get turn() {
+    return this._turn;
+  }
+
   get isWhiteTurn() {
-    return this.turn === Side.White;
+    return this._turn === Side.White;
   }
 
   get isBlackTurn() {
-    return this.turn === Side.Black;
+    return this._turn === Side.Black;
   }
 
   public constructor(fenstring?: string) {
@@ -53,23 +60,19 @@ export class Board {
     let [placement, turn, castling, enPassant, halfMove, fullMove] = fenstring.split(' ');
 
     this.placement = placement;
-    this.turn = turn === Side.Black ? Side.Black : Side.White;
+    this._turn = turn === Side.Black ? Side.Black : Side.White;
     this._castling = new Castling(castling);
     this.halfMove = parseInt(halfMove);
     this.fullMove = parseInt(fullMove);
 
     this.squares = this.createSquares();
-    this.activePieces = this.createPieces();
-    this.inactivePieces = [];
+    this.activePieces = new Set(this.createPieces());
 
     if(enPassant !== '-') {
       this._enPassant = this.findSquare(enPassant);
     }
 
-    this.pinnedPieces = [
-      ...this.findBlackKing().setPinnedPieces(),
-      ...this.findWhiteKing().setPinnedPieces(),
-    ];
+    this.updatePin();
   }
 
   private createSquares(): Square[] {
@@ -108,7 +111,7 @@ export class Board {
     else if(side == Side.White && this.whiteKing)
       return this.whiteKing;
 
-    let piece: King = this.activePieces.find((p): p is King => p instanceof King && p.side == side)!;
+    let piece = <King> this.findActivePiece((p): p is King => p instanceof King && p.side == side)!;
 
     if(side == Side.Black)
       this.blackKing = piece;
@@ -131,7 +134,7 @@ export class Board {
     let homeRank = side == Side.White ? '1' : '8';
     let king = this.findKing(side);
     let kingSquare = king.square!;
-    return this.activePieces.find(
+    return this.findActivePiece(
       p => p instanceof Rook
         && p.side == side
         && p.square?.rank == homeRank
@@ -144,12 +147,19 @@ export class Board {
     let king = this.findKing(side);
 
     let kingSquare = king.square!;
-    return this.activePieces.find(
+    return this.findActivePiece(
       p => p instanceof Rook
         && p.side == side
         && p.square?.rank == homeRank
         && p.square?.column > kingSquare.column
     );
+  }
+
+  public findActivePiece(predicate: (p: Piece) => boolean): Piece | undefined {
+    for(let piece of this.activePieces) {
+      if(predicate(piece))
+        return piece;
+    }
   }
 
   public findSquare(key: string): Square | undefined;
@@ -170,6 +180,92 @@ export class Board {
     }
   }
 
+  private unbind(piece?: Piece): void {
+    if(piece instanceof Piece) {
+      this.inactivePieces.add(piece);
+      this.activePieces.delete(piece);
+      piece.unbind();
+    }
+  }
+
+  private bind(square: Square, piece?: Piece): void {
+    if(piece instanceof Piece) {
+      this.activePieces.add(piece);
+      this.inactivePieces.delete(piece);
+      square.bind(piece);
+    }
+  }
+
+  public move(notation: string): Move {
+    this.updatePin();
+
+    let move = new Move(this, notation);
+
+    this.unbind(move.capturedPiece);
+    this.unbind(move.from.piece);
+    
+    this.bind(move.to, move.promotesTo ?? move.piece);
+
+    if(move.castling) {
+      let rook = move.castling.rook;
+      this.unbind(rook);
+
+      let newPos = this.findSquare(
+        this.turn == Side.Black ? 0 : 7,
+        move.castling.side == CastlingSide.King ? 5 : 3
+      )!;
+
+      this.bind(newPos, rook);
+    }
+
+    if(this.turn == Side.Black) {
+      this.fullMove++;
+    }
+
+    if(move.capturedPiece !== null || move.piece instanceof Pawn) {
+      this.halfMove = 0;
+    }
+    else {
+      this.halfMove++;
+    }
+
+    delete this._enPassant;
+    if(move.piece instanceof King) {
+      this.castling.unset(this.turn, CastlingSide.King, CastlingSide.Queen);
+    }
+    else if(move.piece instanceof Rook) {
+      let king = this.findKing(this.turn);
+      let rook = move.piece;
+      let castlingSide = rook.square!.file > king.square!.file
+        ? CastlingSide.King
+        : CastlingSide.Queen;
+
+      this.castling.unset(this.turn, castlingSide);
+    }
+    else if(move.piece instanceof Pawn) {
+      if(move.from.rank == '2' && move.to.rank == '4') {
+        this._enPassant = this.findSquare(move.from.file + '3');
+      }
+      else if(move.from.rank == '7' && move.to.rank == '5') {
+        this._enPassant = this.findSquare(move.from.file + '6');
+      }
+    }
+
+    this.changeTurn();
+    this.isChanged = true;
+
+    this.moves.push(move);
+
+    return move;
+  }
+
+  private updatePin(): void {
+    this.pinnedPieces.forEach(p => delete p.pin);
+    this.pinnedPieces.clear;
+    this.findBlackKing().setPinnedPieces().forEach(p => this.pinnedPieces.add(p));
+    this.findWhiteKing().setPinnedPieces().forEach(p => this.pinnedPieces.add(p));
+  }
+
   public get fenstring(): string {
     if (this.isChanged) {
       this.placement = this.squares
@@ -183,7 +279,7 @@ export class Board {
 
     return [
       this.placement,
-      this.turn,
+      this._turn,
       this._castling,
       this._enPassant ?? '-',
       this.halfMove,
@@ -216,5 +312,9 @@ export class Board {
       });
       
       return boardString;
+  }
+
+  public changeTurn(): void {
+    this._turn = this.turn == Side.Black ? Side.White : Side.Black;
   }
 }

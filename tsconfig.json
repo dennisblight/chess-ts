@@ -1,8 +1,15 @@
 {
   "extends": "@tsconfig/recommended",
   "compilerOptions": {
-    "preserveConstEnums": true
+    "module": "ESNext",
+    "target": "es5",
+    "declaration": true,
+    "outDir": "./dist",
+    "lib": ["ES2019", "DOM"],
+    "downlevelIteration": true,
+    "skipLibCheck": true
   },
-  "include": ["src/**/*","tests/**/*"],
-  "exclude": ["**/*.spec.ts"]
+  "include": [
+    "src/**/*"
+  ]
 }

@@ -41,6 +41,17 @@ export class Castling {
     return castlingSides;
   }
 
+  public unset(turn: Side, ...side: CastlingSide[]):void {
+    if(turn == Side.Black) {
+      this.blackKing = !side.includes(CastlingSide.King);
+      this.blackQueen = !side.includes(CastlingSide.Queen);
+    }
+    else if(turn == Side.White) {
+      this.whiteKing = !side.includes(CastlingSide.King);
+      this.whiteQueen = !side.includes(CastlingSide.Queen);
+    }
+  }
+
   public toString(): string {
     let str = '';
 

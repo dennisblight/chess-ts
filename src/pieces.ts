@@ -7,14 +7,11 @@ class Pin {
 
   public readonly piece: Piece;
 
-  public readonly vector: Vector;
-
   public readonly direction: Direction;
 
   constructor(piece: Piece, direction: Direction) {
     this.piece = piece;
     this.direction = direction;
-    this.vector = Vector.direction(direction);
   }
 
   public isParallelWith(direction: Direction): boolean {
@@ -136,6 +133,10 @@ export abstract class Piece {
       case 'K': return new King(side, board);
     }
   }
+
+  public static isValidPiece(symbol: string) {
+    return 'prnbqk'.includes(symbol.toLowerCase());
+  }
 }
 
 export class Pawn extends Piece {
@@ -147,7 +148,7 @@ export class Pawn extends Piece {
   }
 
   public get availableMoves(): Square[] {
-    let { board, square, side } = this;
+    let { board, square, side, oppositeSide, pin } = this;
 
     if(!square || !board)
       return [];
@@ -155,7 +156,7 @@ export class Pawn extends Piece {
     let moves: Square[] = [];
     let step = side == Side.Black ? 1 : -1;
 
-    if(!this.pin || this.pin.vector.x == 0) {
+    if(!pin || (pin.direction & Direction.Vertical) == pin.direction) {
       let firstStep = square.displace(step, 0);
       if(firstStep && !firstStep.piece) {
         moves.push(firstStep);
@@ -168,16 +169,16 @@ export class Pawn extends Piece {
       }
     }
 
-    let left = square.displace(step, -1);
-    let right = square.displace(step, 1);
+    let attacking = [
+      Direction.Diagonal | Direction.Left | (Side.Black == side ? Direction.Bottom : Direction.Top),
+      Direction.Diagonal | Direction.Right | (Side.Black == side ? Direction.Bottom : Direction.Top),
+    ]
 
-    if(left && (left.piece?.side == this.oppositeSide || left == board.enPassant)) {
-      moves.push(left);
-    }
+    .filter(d => !this.pin || this.pin.isParallelWith(d))
+    .map(d => square!.displace(d))
+    .filter((s): s is Square => s instanceof Square && (s.piece?.side == oppositeSide || s == board!.enPassant));
 
-    if(right && (right.piece?.side == this.oppositeSide || right == board.enPassant)) {
-      moves.push(right);
-    }
+    moves.push(...attacking);
 
     return moves;
   }
@@ -186,7 +187,9 @@ export class Pawn extends Piece {
 export class Knight extends Piece {
   public get availableMoves(): Square[] {
 
-    if(!this.square || this.pin)
+    let { square, oppositeSide, pin } = this;
+
+    if(!square || pin)
       return [];
 
     let directions = [
@@ -201,9 +204,9 @@ export class Knight extends Piece {
     ];
 
     let moves: Square[] = [];
-    this.square.displaces(directions).forEach(step => {
-      if(step && (!step.piece || step.piece.side == this.oppositeSide))
-        moves.push(step);
+    square.displaces(directions).forEach(s => {
+      if(s && (!s.piece || s.piece.side == oppositeSide))
+        moves.push(s);
     });
     
     return moves;
@@ -216,6 +219,7 @@ export class Knight extends Piece {
 
 export class Bishop extends Piece {
   public get availableMoves(): Square[] {
+    let { square, pin, oppositeSide } = this;
 
     if(!this.square)
       return [];
@@ -227,11 +231,11 @@ export class Bishop extends Piece {
       Direction.BottomRight,
     ]
     
-    .filter(d => !this.pin || this.pin.isParallelWith(d));
+    .filter(d => !pin || pin.isParallelWith(d));
 
     return directions
-      .flatMap(d => this.square!.scanDirection(d, s => !!s.piece))
-      .filter(d => !d.piece || d.piece.side == this.oppositeSide);
+      .flatMap(d => square!.scanDirection(d, s => s.piece instanceof Piece))
+      .filter(d => !d.piece || d.piece.side == oppositeSide);
   }
 }
 
@@ -251,7 +255,7 @@ export class Rook extends Piece {
     .filter(d => !this.pin || this.pin.isParallelWith(d));
 
     return directions
-      .flatMap(d => this.square!.scanDirection(d, s => !!s.piece))
+      .flatMap(d => this.square!.scanDirection(d, s => s.piece instanceof Piece))
       .filter(d => !d.piece || d.piece.side === this.oppositeSide);
   }
 }
