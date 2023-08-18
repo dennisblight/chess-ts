@@ -282,6 +282,15 @@ export class Board {
       }
     }
 
+    if(move.capturedPiece instanceof Rook) {
+      if (this.findKingRook(move.capturedPiece.side) === move.capturedPiece) {
+        this.castling.unset(move.capturedPiece.side, CastlingSide.King);
+      }
+      else if (this.findQueenRook(move.capturedPiece.side) === move.capturedPiece) {
+        this.castling.unset(move.capturedPiece.side, CastlingSide.Queen);
+      }
+    }
+
     this.changeTurn();
     this.isChanged = true;
 
